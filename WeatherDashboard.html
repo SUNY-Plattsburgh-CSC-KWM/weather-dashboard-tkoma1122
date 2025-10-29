@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .input-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        input, select, button {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 15px;
+            background: #f0f0f0;
+            color: #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .forecast-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .forecast-day {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .forecast-day:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .weather-icon {
+            font-size: 3rem;
+            margin: 10px 0;
+        }
+
+        .date {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .temp-high {
+            color: #e74c3c;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .temp-low {
+            color: #3498db;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .historical-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .parameters-section {
+            margin-top: 20px;
+        }
+
+        .parameters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .parameter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .parameter-checkbox:hover {
+            background: #e9e9e9;
+        }
+
+        .parameter-checkbox input {
+            cursor: pointer;
+        }
+
+        #chart-container {
+            margin-top: 30px;
+            min-height: 400px;
+        }
+
+        .chart-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 5px;
+            pointer-events: none;
+            font-size: 12px;
+            z-index: 1000;
+        }
+
+        .axis {
+            font-size: 12px;
+        }
+
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .line {
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .dot {
+            fill: steelblue;
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .input-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .forecast-container {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌦️ Weather Dashboard</h1>
+        
+        <div class="card">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="latitude">Latitude</label>
+                    <input type="number" id="latitude" placeholder="e.g., 44.6995" value="44.6995" step="0.0001" min="-90" max="90">
+                </div>
+                <div class="input-group">
+                    <label for="longitude">Longitude</label>
+                    <input type="number" id="longitude" placeholder="e.g., -73.4529" value="-73.4529" step="0.0001" min="-180" max="180">
+                </div>
+                <div class="input-group">
+                    <label for="unit">Temperature Unit</label>
+                    <select id="unit">
+                        <option value="fahrenheit">Fahrenheit (°F)</option>
+                        <option value="celsius">Celsius (°C)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mode-toggle">
+                <div class="mode-btn active" id="forecast-mode">📅 Forecast</div>
+                <div class="mode-btn" id="historical-mode">📊 Historical Data</div>
+            </div>
+            
+            <div id="forecast-section">
+                <div class="input-section">
+                    <div class="input-group">
+                        <label for="forecast-days">Number of Days</label>
+                        <input type="number" id="forecast-days" value="7" min="1" max="16">
+                    </div>
+                    <div class="input-group" style="justify-content: flex-end;">
+                        <button onclick="getForecast()">Get Forecast</button>
+                    </div>
+                </div>
+                <div id="forecast-results"></div>
+            </div>
+            
+            <div id="historical-section" style="display: none;">
+                <div class="historical-controls">
+                    <div class="input-group">
+                        <label for="start-date">Start Date</label>
+                        <input type="date" id="start-date" value="2024-01-01">
+                    </div>
+                    <div class="input-group">
+                        <label for="end-date">End Date</label>
+                        <input type="date" id="end-date" value="2024-12-31">
+                    </div>
+                    <div class="input-group" style="justify-content: flex-end;">
+                        <button onclick="getHistoricalData()">Get Historical Data</button>
+                    </div>
+                </div>
+                
+                <div class="parameters-section">
+                    <label><strong>Select Parameters to Display:</strong></label>
+                    <div class="parameters-grid">
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-temp-max" value="temperature_2m_max" checked>
+                            <label for="param-temp-max">Max Temperature</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-temp-min" value="temperature_2m_min" checked>
+                            <label for="param-temp-min">Min Temperature</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-temp-mean" value="temperature_2m_mean">
+                            <label for="param-temp-mean">Mean Temperature</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-dewpoint" value="dewpoint_2m_max">
+                            <label for="param-dewpoint">Max Dewpoint</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-precipitation" value="precipitation_sum">
+                            <label for="param-precipitation">Precipitation</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-rain" value="rain_sum">
+                            <label for="param-rain">Rain</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-snow" value="snowfall_sum">
+                            <label for="param-snow">Snowfall</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-wind" value="wind_speed_10m_max">
+                            <label for="param-wind">Max Wind Speed</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-sunshine" value="sunshine_duration">
+                            <label for="param-sunshine">Sunshine Duration</label>
+                        </div>
+                        <div class="parameter-checkbox">
+                            <input type="checkbox" id="param-uv" value="uv_index_max">
+                            <label for="param-uv">Max UV Index</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Weather code to icon mapping
+        const weatherIcons = {
+            0: '☀️',  // Clear sky
+            1: '🌤️',  // Mainly clear
+            2: '⛅',  // Partly cloudy
+            3: '☁️',  // Overcast
+            45: '🌫️', // Fog
+            48: '🌫️', // Depositing rime fog
+            51: '🌦️', // Drizzle light
+            53: '🌦️', // Drizzle moderate
+            55: '🌧️', // Drizzle dense
+            56: '🌨️', // Freezing drizzle light
+            57: '🌨️', // Freezing drizzle dense
+            61: '🌦️', // Rain slight
+            63: '🌧️', // Rain moderate
+            65: '⛈️', // Rain heavy
+            66: '🌨️', // Freezing rain light
+            67: '🌨️', // Freezing rain heavy
+            71: '🌨️', // Snow fall slight
+            73: '❄️', // Snow fall moderate
+            75: '❄️', // Snow fall heavy
+            77: '❄️', // Snow grains
+            80: '🌦️', // Rain showers slight
+            81: '🌧️', // Rain showers moderate
+            82: '⛈️', // Rain showers violent
+            85: '🌨️', // Snow showers slight
+            86: '❄️', // Snow showers heavy
+            95: '⛈️', // Thunderstorm
+            96: '⛈️', // Thunderstorm with hail light
+            99: '⛈️'  // Thunderstorm with hail heavy
+        };
+
+        // Weather code descriptions
+        const weatherDescriptions = {
+            0: 'Clear sky',
+            1: 'Mainly clear',
+            2: 'Partly cloudy',
+            3: 'Overcast',
+            45: 'Foggy',
+            48: 'Rime fog',
+            51: 'Light drizzle',
+            53: 'Moderate drizzle',
+            55: 'Dense drizzle',
+            56: 'Light freezing drizzle',
+            57: 'Dense freezing drizzle',
+            61: 'Slight rain',
+            63: 'Moderate rain',
+            65: 'Heavy rain',
+            66: 'Light freezing rain',
+            67: 'Heavy freezing rain',
+            71: 'Slight snow fall',
+            73: 'Moderate snow fall',
+            75: 'Heavy snow fall',
+            77: 'Snow grains',
+            80: 'Slight rain showers',
+            81: 'Moderate rain showers',
+            82: 'Violent rain showers',
+            85: 'Slight snow showers',
+            86: 'Heavy snow showers',
+            95: 'Thunderstorm',
+            96: 'Thunderstorm with light hail',
+            99: 'Thunderstorm with heavy hail'
+        };
+
+        // Mode toggle functionality
+        document.getElementById('forecast-mode').addEventListener('click', function() {
+            document.getElementById('forecast-mode').classList.add('active');
+            document.getElementById('historical-mode').classList.remove('active');
+            document.getElementById('forecast-section').style.display = 'block';
+            document.getElementById('historical-section').style.display = 'none';
+        });
+
+        document.getElementById('historical-mode').addEventListener('click', function() {
+            document.getElementById('historical-mode').classList.add('active');
+            document.getElementById('forecast-mode').classList.remove('active');
+            document.getElementById('historical-section').style.display = 'block';
+            document.getElementById('forecast-section').style.display = 'none';
+        });
+
+        // Temperature conversion functions
+        function celsiusToFahrenheit(celsius) {
+            return (celsius * 9/5) + 32;
+        }
+
+        function convertTemperature(value, unit) {
+            if (unit === 'fahrenheit') {
+                return celsiusToFahrenheit(value);
+            }
+            return value;
+        }
+
+        function getTemperatureSymbol(unit) {
+            return unit === 'fahrenheit' ? '°F' : '°C';
+        }
+
+        // Forecast functionality
+        async function getForecast() {
+            const lat = document.getElementById('latitude').value;
+            const lon = document.getElementById('longitude').value;
+            const days = document.getElementById('forecast-days').value;
+            const unit = document.getElementById('unit').value;
+            
+            if (!lat || !lon) {
+                alert('Please enter both latitude and longitude');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('forecast-results');
+            resultsDiv.innerHTML = '<div class="loading">Loading forecast...</div>';
+            
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=${days}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.reason || 'Failed to fetch forecast');
+                }
+                
+                displayForecast(data, unit);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function displayForecast(data, unit) {
+            const resultsDiv = document.getElementById('forecast-results');
+            const symbol = getTemperatureSymbol(unit);
+            
+            let html = '<div class="forecast-container">';
+            
+            for (let i = 0; i < data.daily.time.length; i++) {
+                const date = new Date(data.daily.time[i]);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                const maxTemp = convertTemperature(data.daily.temperature_2m_max[i], unit).toFixed(1);
+                const minTemp = convertTemperature(data.daily.temperature_2m_min[i], unit).toFixed(1);
+                const weatherCode = data.daily.weather_code[i];
+                const icon = weatherIcons[weatherCode] || '🌡️';
+                const description = weatherDescriptions[weatherCode] || 'Unknown';
+                
+                html += `
+                    <div class="forecast-day">
+                        <div class="date">${dayName}<br>${dateStr}</div>
+                        <div class="weather-icon" title="${description}">${icon}</div>
+                        <div class="temp-high">↑ ${maxTemp}${symbol}</div>
+                        <div class="temp-low">↓ ${minTemp}${symbol}</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        // Historical data functionality
+        async function getHistoricalData() {
+            const lat = document.getElementById('latitude').value;
+            const lon = document.getElementById('longitude').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const unit = document.getElementById('unit').value;
+            
+            if (!lat || !lon || !startDate || !endDate) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            // Get selected parameters
+            const checkboxes = document.querySelectorAll('.parameter-checkbox input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select at least one parameter to display');
+                return;
+            }
+            
+            const parameters = Array.from(checkboxes).map(cb => cb.value).join(',');
+            
+            const chartContainer = document.getElementById('chart-container');
+            chartContainer.innerHTML = '<div class="loading">Loading historical data...</div>';
+            
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=${parameters}&timezone=auto`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.reason || 'Failed to fetch historical data');
+                }
+                
+                plotHistoricalData(data, Array.from(checkboxes).map(cb => ({
+                    key: cb.value,
+                    label: cb.nextElementSibling.textContent
+                })), unit);
+            } catch (error) {
+                chartContainer.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function plotHistoricalData(data, parameters, unit) {
+            const chartContainer = document.getElementById('chart-container');
+            chartContainer.innerHTML = '';
+            
+            // Set up dimensions and margins
+            const margin = {top: 40, right: 150, bottom: 60, left: 70};
+            const width = chartContainer.offsetWidth - margin.left - margin.right;
+            const height = 450 - margin.top - margin.bottom;
+            
+            // Create SVG
+            const svg = d3.select('#chart-container')
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+            
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+            // Parse dates
+            const dates = data.daily.time.map(d => new Date(d));
+            
+            // Set up scales
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(dates))
+                .range([0, width]);
+            
+            // Find min and max across all selected parameters for temperature-based parameters
+            let yMin = Infinity, yMax = -Infinity;
+            const tempParams = ['temperature_2m_max', 'temperature_2m_min', 'temperature_2m_mean', 'dewpoint_2m_max'];
+            
+            parameters.forEach(param => {
+                if (data.daily[param.key]) {
+                    const values = data.daily[param.key].filter(v => v !== null);
+                    if (values.length > 0) {
+                        let min = d3.min(values);
+                        let max = d3.max(values);
+                        
+                        // Convert temperature values if needed
+                        if (tempParams.includes(param.key) && unit === 'fahrenheit') {
+                            min = celsiusToFahrenheit(min);
+                            max = celsiusToFahrenheit(max);
+                        }
+                        
+                        yMin = Math.min(yMin, min);
+                        yMax = Math.max(yMax, max);
+                    }
+                }
+            });
+            
+            // Add some padding to y-axis
+            const yPadding = (yMax - yMin) * 0.1;
+            
+            const yScale = d3.scaleLinear()
+                .domain([yMin - yPadding, yMax + yPadding])
+                .range([height, 0]);
+            
+            // Create color scale
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            
+            // Add X axis
+            g.append('g')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale).tickFormat(d3.timeFormat('%b %d')))
+                .append('text')
+                .attr('class', 'axis-label')
+                .attr('x', width / 2)
+                .attr('y', 40)
+                .attr('fill', '#000')
+                .style('text-anchor', 'middle')
+                .text('Date');
+            
+            // Add Y axis
+            const symbol = getTemperatureSymbol(unit);
+            g.append('g')
+                .call(d3.axisLeft(yScale))
+                .append('text')
+                .attr('class', 'axis-label')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', -50)
+                .attr('x', -height / 2)
+                .attr('fill', '#000')
+                .style('text-anchor', 'middle')
+                .text(`Value (${symbol} for temperatures)`);
+            
+            // Create tooltip
+            const tooltip = d3.select('body').append('div')
+                .attr('class', 'tooltip')
+                .style('opacity', 0);
+            
+            // Add lines for each parameter
+            parameters.forEach((param, index) => {
+                if (!data.daily[param.key]) return;
+                
+                const lineData = dates.map((date, i) => {
+                    let value = data.daily[param.key][i];
+                    if (value !== null && tempParams.includes(param.key) && unit === 'fahrenheit') {
+                        value = celsiusToFahrenheit(value);
+                    }
+                    return {
+                        date: date,
+                        value: value
+                    };
+                }).filter(d => d.value !== null);
+                
+                // Create line generator
+                const line = d3.line()
+                    .x(d => xScale(d.date))
+                    .y(d => yScale(d.value))
+                    .curve(d3.curveMonotoneX);
+                
+                // Add the line
+                g.append('path')
+                    .datum(lineData)
+                    .attr('class', 'line')
+                    .attr('d', line)
+                    .style('stroke', colorScale(index));
+                
+                // Add dots
+                g.selectAll(`.dot-${index}`)
+                    .data(lineData)
+                    .enter().append('circle')
+                    .attr('class', `dot dot-${index}`)
+                    .attr('cx', d => xScale(d.date))
+                    .attr('cy', d => yScale(d.value))
+                    .attr('r', 3)
+                    .style('fill', colorScale(index))
+                    .on('mouseover', function(event, d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style('opacity', .9);
+                        
+                        let unit_label = '';
+                        if (tempParams.includes(param.key)) {
+                            unit_label = symbol;
+                        } else if (param.key.includes('precipitation') || param.key.includes('rain')) {
+                            unit_label = 'mm';
+                        } else if (param.key.includes('snow')) {
+                            unit_label = 'cm';
+                        } else if (param.key.includes('wind')) {
+                            unit_label = 'km/h';
+                        } else if (param.key.includes('sunshine')) {
+                            unit_label = 's';
+                        }
+                        
+                        tooltip.html(`${param.label}<br/>Date: ${d.date.toLocaleDateString()}<br/>Value: ${d.value.toFixed(2)} ${unit_label}`)
+                            .style('left', (event.pageX + 10) + 'px')
+                            .style('top', (event.pageY - 28) + 'px');
+                    })
+                    .on('mouseout', function() {
+                        tooltip.transition()
+                            .duration(500)
+                            .style('opacity', 0);
+                    });
+            });
+            
+            // Add legend
+            const legend = svg.append('g')
+                .attr('class', 'legend')
+                .attr('transform', `translate(${width + margin.left + 20}, ${margin.top})`);
+            
+            parameters.forEach((param, index) => {
+                if (!data.daily[param.key]) return;
+                
+                const legendRow = legend.append('g')
+                    .attr('transform', `translate(0, ${index * 20})`);
+                
+                legendRow.append('line')
+                    .attr('x1', 0)
+                    .attr('x2', 20)
+                    .attr('y1', 10)
+                    .attr('y2', 10)
+                    .style('stroke', colorScale(index))
+                    .style('stroke-width', 2);
+                
+                legendRow.append('text')
+                    .attr('x', 25)
+                    .attr('y', 10)
+                    .attr('dy', '0.32em')
+                    .style('font-size', '12px')
+                    .text(param.label);
+            });
+        }
+
+        // Initialize with forecast on page load
+        window.addEventListener('load', function() {
+            getForecast();
+        });
+    </script>
+</body>
+</html>
